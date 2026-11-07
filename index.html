@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARMOR | Antimicrobial Resistance Mapping and Outbreak Response</title>
+  <meta name="description" content="Platform analitik resistensi antimikroba Indonesia: peta choropleth, rekomendasi terapi per lini, farmakoekonomi, dan insight genomik-filogenetik." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950:'#061525', 900:'#0A2540', 800:'#0F3460', 700:'#1A4A7A', 600:'#2563A8' },
+            teal: { 600:'#1A7A8C', 500:'#2A9D8F', 100:'#E6F4F1' }
+          },
+          fontFamily: {
+            nunito: ['Nunito','ui-sans-serif','system-ui','sans-serif'],
+            body: ['Open Sans','ui-sans-serif','system-ui','sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body{font-family:'Open Sans',system-ui,sans-serif}
+    h1,h2,h3,h4{font-family:'Nunito',system-ui,sans-serif;letter-spacing:-0.02em}
+    .badge-red{background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA}
+    .badge-yellow{background:#FEF3C7;color:#B45309;border:1px solid #FDE68A}
+    .badge-green{background:#D1FAE5;color:#047857;border:1px solid #A7F3D0}
+    .badge-gray{background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0}
+    .badge-blue{background:#DBEAFE;color:#1D4ED8;border:1px solid #BFDBFE}
+    .page{display:none}.page.active{display:block}
+    .region-card{transition:all .2s ease}.region-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(10,37,64,.12)}
+    .phylo-line{stroke:#0A2540;stroke-width:2}
+    .phylo-node{fill:#0A2540}
+    .phylo-label{font-size:11px;fill:#334155}
+    .search-hit:hover{background:#F1F5F9}
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-thumb{background:#94A3B8;border-radius:4px}
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-white text-navy-900 antialiased">
+
+<header class="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+    <a href="#" onclick="showPage('home');return false" class="flex items-center gap-2.5 group">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-navy-900 text-white font-bold text-sm tracking-tight group-hover:bg-navy-800 transition-colors">AR</div>
+      <div class="leading-tight">
+        <div class="font-nunito text-lg font-extrabold text-navy-900 tracking-tight">ARMOR</div>
+        <div class="hidden text-[10px] font-medium uppercase tracking-wider text-slate-500 sm:block">AMR Mapping & Outbreak Response</div>
+      </div>
+    </a>
+    <nav class="hidden lg:flex items-center gap-1" id="nav-desktop">
+      <a href="#" data-page="home" class="nav-link rounded-lg px-3 py-2 text-sm font-medium active bg-navy-900 text-white">Beranda</a>
+      <a href="#" data-page="cari" class="nav-link rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Pencarian</a>
+      <a href="#" data-page="peta" class="nav-link rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Peta Resistensi</a>
+      <a href="#" data-page="terapi" class="nav-link rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Pilihan Obat</a>
+      <a href="#" data-page="phylo" class="nav-link rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Phylogenetic</a>
+      <a href="#" data-page="tentang" class="nav-link rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Tentang</a>
+    </nav>
+    <button type="button" id="menu-btn" class="lg:hidden inline-flex rounded-lg p-2 text-slate-600 hover:bg-slate-100" aria-label="Menu">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+  <div id="mobile-menu" class="hidden lg:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-1">
+    <a href="#" data-page="home" class="nav-link block rounded-lg px-3 py-2.5 text-sm font-medium">Beranda</a>
+    <a href="#" data-page="cari" class="nav-link block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700">Pencarian</a>
+    <a href="#" data-page="peta" class="nav-link block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700">Peta Resistensi</a>
+    <a href="#" data-page="terapi" class="nav-link block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700">Pilihan Obat</a>
+    <a href="#" data-page="phylo" class="nav-link block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700">Phylogenetic</a>
+    <a href="#" data-page="tentang" class="nav-link block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700">Tentang</a>
+  </div>
+</header>
+
+<main class="flex-1">
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <section class="relative overflow-hidden bg-navy-900 text-white">
+    <div class="absolute inset-0 opacity-20">
+      <div class="absolute -right-20 -top-20 h-96 w-96 rounded-full bg-teal-500 blur-3xl"></div>
+      <div class="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-navy-600 blur-3xl"></div>
+    </div>
+    <div class="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+      <div class="max-w-3xl">
+        <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-teal-500">Mitra analitik surveilans AMR Indonesia</p>
+        <h1 class="font-nunito text-4xl font-extrabold leading-tight sm:text-5xl">ARMOR</h1>
+        <p class="mt-2 text-xl font-medium text-slate-300">Antimicrobial Resistance Mapping and Outbreak Response</p>
+        <p class="mt-6 text-base leading-relaxed text-slate-300 max-w-2xl">
+          Platform web dan layanan analitik yang mengubah data resistensi antimikroba menjadi informasi untuk pemantauan kesehatan, evaluasi kebijakan, dan perencanaan kebutuhan obat. Data tidak hanya dipetakan — data diolah, diperiksa mutunya, diinterpretasikan, dan diperbarui agar membantu pengambilan keputusan.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <button onclick="showPage('cari')" class="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 hover:bg-slate-100">Mulai pencarian</button>
+          <button onclick="showPage('peta')" class="rounded-lg border border-white/30 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Peta resistensi</button>
+          <button onclick="showPage('terapi')" class="rounded-lg border border-white/30 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Pilihan obat</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-b border-slate-200 bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" id="stats-grid"></div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <div class="max-w-2xl mb-10">
+      <h2 class="font-nunito text-2xl font-extrabold text-navy-900">Empat kelompok informasi yang dihubungkan</h2>
+      <p class="mt-2 text-slate-600 text-sm leading-relaxed">ARMOR mengintegrasikan data geospasial, epidemiologi & uji kepekaan, genomik mikroba, serta ekonomi & ketersediaan obat — agar pertanyaan klinis dan kebijakan dapat dijawab lebih spesifik.</p>
+    </div>
+    <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-2xl mb-2">🗺️</div>
+        <h3 class="font-nunito font-bold text-navy-900">Geospasial</h3>
+        <p class="mt-1.5 text-sm text-slate-600">Peta choropleth per wilayah/fasilitas, dengan N isolat dan batas keterwakilan data.</p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-2xl mb-2">🧪</div>
+        <h3 class="font-nunito font-bold text-navy-900">Epidemiologi & AST</h3>
+        <p class="mt-1.5 text-sm text-slate-600">Pola kepekaan, tren waktu, spesimen, dan ringkasan antibiogram terstandardisasi.</p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-2xl mb-2">🧬</div>
+        <h3 class="font-nunito font-bold text-navy-900">Genomik & Filogenetik</h3>
+        <p class="mt-1.5 text-sm text-slate-600">Gen/mutasi resistensi dan hubungan filogenetik antar-isolat sebagai pelengkap AST.</p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-2xl mb-2">💊</div>
+        <h3 class="font-nunito font-bold text-navy-900">Ekonomi & Ketersediaan</h3>
+        <p class="mt-1.5 text-sm text-slate-600">Harga, bentuk sediaan, ketersediaan, dan konteks penggunaan untuk evaluasi formularium.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-navy-900 text-white">
+    <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+      <div class="grid gap-10 lg:grid-cols-2">
+        <div>
+          <h2 class="font-nunito text-2xl font-extrabold">Bukan sekadar dashboard</h2>
+          <p class="mt-4 text-slate-300 text-sm leading-relaxed">Produk yang ditawarkan adalah layanan pengolahan data berkala: standardisasi, pemeriksaan mutu, analisis tren, pelaporan, dan pendampingan interpretasi. Setiap keluaran menyertakan sumber, periode, jumlah data, dan keterbatasannya.</p>
+          <ul class="mt-5 space-y-2 text-sm text-slate-300">
+            <li class="flex gap-2"><span class="text-teal-500">●</span> Wilayah tanpa data tidak ditampilkan seolah bebas resistensi</li>
+            <li class="flex gap-2"><span class="text-teal-500">●</span> Data satu fasilitas tidak otomatis mewakili seluruh wilayah</li>
+            <li class="flex gap-2"><span class="text-teal-500">●</span> Genomik pelengkap, bukan satu-satunya dasar klaim penularan</li>
+            <li class="flex gap-2"><span class="text-teal-500">●</span> Independensi analisis: kepentingan komersial tidak menentukan penilaian klinis</li>
+          </ul>
+        </div>
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-6">
+          <h3 class="font-semibold mb-3">Target tahap awal</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">Dinas kesehatan sebagai calon pengguna layanan; rumah sakit dan laboratorium sebagai mitra sumber data sekaligus pengguna hasil analisis. Pengembangan terbatas pada satu jejaring pilot dengan data yang dapat digunakan secara sah.</p>
+          <p class="mt-4 text-xs text-slate-400">Keberhasilan diukur dari kualitas data yang diolah, manfaat bagi pengguna, dan keberlanjutan layanan — bukan dari banyaknya fitur.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- PENCARIAN -->
+<div id="page-cari" class="page">
+  <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h1 class="font-nunito text-3xl font-extrabold text-navy-900">Pencarian multidimensi</h1>
+      <p class="mt-2 text-slate-600 max-w-2xl text-sm">Telusuri berdasarkan <strong>penyakit/sindrom</strong>, <strong>antimikroba</strong>, atau <strong>wilayah</strong>. Hasil mengarahkan ke peta, pilihan obat, atau insight terkait.</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 mb-6">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="flex-1 relative">
+          <input id="search-input" type="search" placeholder="Contoh: pneumonia, meropenem, Jawa, E. coli, ISK…" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-navy-700 focus:outline-none focus:ring-2 focus:ring-navy-700/20" />
+        </div>
+        <select id="search-type" class="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm">
+          <option value="all">Semua kategori</option>
+          <option value="penyakit">Penyakit / sindrom</option>
+          <option value="antimikroba">Antimikroba</option>
+          <option value="wilayah">Wilayah</option>
+          <option value="patogen">Patogen</option>
+        </select>
+        <button id="btn-search" class="rounded-lg bg-navy-900 px-6 py-3 text-sm font-semibold text-white hover:bg-navy-800">Cari</button>
+      </div>
+      <p class="mt-3 text-xs text-slate-500">Pencarian bekerja pada indeks lokal prototipe. Integrasi API/data penuh dilakukan pada tahap implementasi.</p>
+    </div>
+
+    <div id="search-results" class="space-y-3">
+      <div class="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">Ketik kata kunci lalu klik Cari, atau pilih saran cepat di bawah.</div>
+    </div>
+
+    <div class="mt-8">
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Saran cepat</p>
+      <div class="flex flex-wrap gap-2" id="quick-chips"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PETA -->
+<div id="page-peta" class="page">
+  <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h1 class="font-nunito text-3xl font-extrabold text-navy-900">Peta resistensi (choropleth)</h1>
+      <p class="mt-2 text-slate-600 max-w-2xl text-sm">Persentase sensitivitas per wilayah dengan kategori warna mengacu prinsip CLSI M39. N isolat ditampilkan sebagai indikator keandalan. Wilayah tanpa data memadai ditandai abu-abu — tidak digambarkan bebas resistensi.</p>
+    </div>
+
+    <div class="mb-6 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-3">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Patogen</label>
+        <select id="filter-pathogen" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Antimikroba</label>
+        <select id="filter-antibiotic" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Spesimen</label>
+        <select id="filter-specimen" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="Semua">Semua</option></select>
+      </div>
+    </div>
+
+    <div class="mb-6 flex flex-wrap gap-2 text-xs">
+      <span class="badge-red rounded-full px-2.5 py-0.5 font-semibold">≤60% rendah</span>
+      <span class="badge-yellow rounded-full px-2.5 py-0.5 font-semibold">61–80% sedang</span>
+      <span class="badge-green rounded-full px-2.5 py-0.5 font-semibold">≥81% tinggi</span>
+      <span class="badge-gray rounded-full px-2.5 py-0.5 font-semibold">N&lt;30 / data terbatas</span>
+    </div>
+
+    <div id="region-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+
+    <div class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <strong>Catatan metodologi:</strong> Angka bersifat ilustratif untuk demonstrasi. Data aktual memerlukan izin dan akses resmi (mis. SINAR-PAMKI). Satu fasilitas tidak otomatis mewakili seluruh penduduk wilayah.
+    </div>
+  </div>
+</div>
+
+<!-- PILIHAN OBAT / TERAPI -->
+<div id="page-terapi" class="page">
+  <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h1 class="font-nunito text-3xl font-extrabold text-navy-900">Pilihan obat sesuai pola resistensi wilayah</h1>
+      <p class="mt-2 text-slate-600 max-w-3xl text-sm">Keluaran menghubungkan pola kepekaan dengan pilihan terapi per <strong>lini</strong>, cara penggunaan, harga, dan ketersediaan (jika data tersedia). Warna membantu membaca status sensitivitas dan ketersediaan. Bukan perintah terapi — pendukung keputusan.</p>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-5">
+      <div class="lg:col-span-2">
+        <div class="sticky top-24 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <h2 class="font-nunito text-lg font-bold text-navy-900">Parameter</h2>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Wilayah</label>
+            <select id="tx-region" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Penyakit / sindrom</label>
+            <select id="tx-disease" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Patogen yang dicurigai</label>
+            <select id="tx-pathogen" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Spesimen</label>
+            <select id="tx-specimen" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"></select>
+          </div>
+          <button id="btn-terapi" class="w-full rounded-lg bg-navy-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-800">Tampilkan pilihan obat</button>
+          <p class="text-xs text-slate-500 leading-relaxed">Hasil dikelompokkan per lini terapi. Keputusan akhir tetap pada klinisi & pedoman yang berlaku.</p>
+        </div>
+      </div>
+      <div class="lg:col-span-3">
+        <div id="tx-results">
+          <div class="flex h-64 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 text-sm">Pilih parameter lalu klik Tampilkan pilihan obat</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PHYLOGENETIC -->
+<div id="page-phylo" class="page">
+  <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h1 class="font-nunito text-3xl font-extrabold text-navy-900">Phylogenetic & insight strain</h1>
+      <p class="mt-2 text-slate-600 max-w-3xl text-sm">Modul pelengkap untuk melihat apakah isolat dalam klaster yang sama (mis. strain A vs B) dan gen resistensi terkait. Digunakan untuk memperkaya investigasi epidemiologi — <strong>bukan</strong> satu-satunya dasar menetapkan penularan atau kejadian wabah. Memerlukan data sekuensing yang sah dan memadai.</p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-3 mb-8">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Patogen</label>
+        <select id="phylo-pathogen" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+          <option>Klebsiella pneumoniae</option>
+          <option>Escherichia coli</option>
+          <option>Acinetobacter baumannii</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Wilayah fokus</label>
+        <select id="phylo-region" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"></select>
+      </div>
+      <div class="flex items-end">
+        <button id="btn-phylo" class="w-full rounded-lg bg-navy-900 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">Tampilkan pohon (demo)</button>
+      </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-5">
+      <div class="lg:col-span-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-x-auto">
+        <h2 class="font-nunito font-bold text-navy-900 mb-4">Pohon filogenetik (ilustratif)</h2>
+        <div id="phylo-tree" class="min-h-[320px]"></div>
+        <p class="mt-3 text-xs text-slate-500">Demo berbasis data fiktif. Implementasi nyata memakai jarak genetik dari sekuens (mis. cgMLST / SNP) dan library visualisasi khusus.</p>
+      </div>
+      <div class="lg:col-span-2 space-y-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="font-nunito font-bold text-navy-900 mb-3">Klaster terdeteksi</h3>
+          <div id="phylo-clusters" class="space-y-3 text-sm"></div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="font-nunito font-bold text-navy-900 mb-3">Gen resistensi terkait</h3>
+          <div id="phylo-genes" class="space-y-2 text-sm"></div>
+        </div>
+        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 leading-relaxed">
+          <strong>Batas interpretasi:</strong> Kedekatan filogenetik mendukung hipotesis transmisi tetapi harus diverifikasi dengan data epidemiologi, waktu, dan lokasi. ARMOR menyediakan penanda perubahan pola + alur verifikasi, bukan vonis wabah otomatis.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TENTANG -->
+<div id="page-tentang" class="page">
+  <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <h1 class="font-nunito text-3xl font-extrabold text-navy-900">Tentang ARMOR</h1>
+    <p class="mt-2 text-slate-600 text-sm">Antimicrobial Resistance Mapping and Outbreak Response</p>
+    <div class="mt-10 space-y-6 text-[15px] leading-relaxed text-slate-700">
+      <section>
+        <h2 class="font-nunito text-xl font-bold text-navy-900 mb-2">Gagasan inti</h2>
+        <p>Data tidak cukup hanya dikumpulkan atau ditampilkan dalam bentuk peta. Data perlu diolah, diperiksa kualitasnya, diinterpretasikan, dan diperbarui agar membantu pengambilan keputusan di tingkat klinis, kebijakan, dan rantai pasok obat.</p>
+      </section>
+      <section>
+        <h2 class="font-nunito text-xl font-bold text-navy-900 mb-2">Apa yang diintegrasikan</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Geospasial — wilayah, fasilitas, keterwakilan</li>
+          <li>Epidemiologi & uji kepekaan (AST)</li>
+          <li>Genomik mikroba & hubungan filogenetik (pelengkap)</li>
+          <li>Informasi ekonomi, bentuk sediaan, dan ketersediaan obat</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="font-nunito text-xl font-bold text-navy-900 mb-2">Model layanan</h2>
+        <p>Bukan dashboard sekali selesai, melainkan layanan berkala: standardisasi data, QC, analisis tren, pelaporan, dan pendampingan interpretasi. Target awal: dinas kesehatan sebagai pembeli layanan; RS dan laboratorium sebagai mitra data.</p>
+      </section>
+      <section>
+        <h2 class="font-nunito text-xl font-bold text-navy-900 mb-2">Prinsip</h2>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Transparansi sumber, N, dan keterbatasan data</li>
+          <li>Independensi analisis dari kepentingan komersial</li>
+          <li>Genomik sebagai pelengkap, bukan pengganti konteks epidemiologi</li>
+          <li>Tidak menyimpulkan “antibiotik tidak diperlukan” hanya dari resistensi pada subset data</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="font-nunito text-xl font-bold text-navy-900 mb-2">Tim pengusul</h2>
+        <ul class="space-y-1">
+          <li><strong>Noval Kurnia Wati</strong> — Bioteknologi dan Bahan Alam, FF UI</li>
+          <li><strong>Asfaraeni Rahmah</strong> — Farmakologi dan Toksikologi, FF UI</li>
+          <li><strong>Dimas Syafi Aldi</strong> — Biostatistik dan Epidemiologi, FKM UI</li>
+        </ul>
+      </section>
+      <section class="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <h2 class="font-nunito text-lg font-bold text-navy-900 mb-2">Disclaimer</h2>
+        <p class="text-sm text-slate-600">Prototipe demonstrasi untuk inovasi dan edukasi. Data ilustratif. Bukan pengganti penilaian klinis, pedoman terapi, atau keputusan otoritas kesehatan. Penggunaan data aktual memerlukan izin dan hak pemanfaatan yang jelas.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer class="border-t border-slate-200 bg-navy-950 text-slate-300">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="flex flex-col sm:flex-row justify-between gap-4 text-sm">
+      <div>
+        <span class="font-nunito font-bold text-white">ARMOR</span>
+        <span class="text-slate-500"> · Prototipe konseptual · FF UI 2026</span>
+      </div>
+      <div class="text-xs text-slate-500">Data agregat · Tanpa identitas pasien · Independensi analisis</div>
+    </div>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
